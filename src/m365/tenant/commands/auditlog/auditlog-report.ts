@@ -81,27 +81,42 @@ class TenantAuditlogReportCommand extends Command {
       .then((): Promise<AuditContentList[]> => this.getAuditContentList(args, logger))
       .then((AuditContentLists: AuditContentList[]): Promise<any> => {
         logger.log(`Number of Records : ${AuditContentLists.length}`)
+        
+        //Without Batching
+        //return Promise.all(AuditContentLists.map(AuditContent => this.getAuditLogReports(AuditContent.contentUri)));
+
 
         //Batching Approach - Given Batch size is 10
+
+        let CompleteAuditReports: any;
         for (let i = 0; i < AuditContentLists.length; i += 10) { 
-          const requests = AuditContentLists.slice(i, i + 10).map((AuditContent) => { 
-            return this.getAuditLogReports(AuditContent.contentUri)
-          })
-          
+          logger.log (`Outer Loop : ${i}`)
+          const requests = AuditContentLists.slice(i, i + 10).map((AuditContentList) => { 
+            logger.log (`Inner Loop : ${i}`);
+            return this.getAuditLogReports(AuditContentList.contentUri)
+          })          
           return Promise.all(requests)
+          .then((AuditReportbatch: AuditlogReport[][]): void => {
+            logger.log(`Before Return ${AuditReportbatch}`);
+            return CompleteAuditReports.push(AuditReportbatch);
+          })         
+          
         }
 
-        return Promise.resolve();
+        logger.log(`Completed Execution : ${CompleteAuditReports}`);
+
+        return Promise.resolve(CompleteAuditReports);
+
       })
       .then((res: any): void => {
 
 
-        for (let i: number = 0; i < res.length; i++) {
-          logger.log(res[i]);
-        }
+        // for (let i: number = 0; i < res.length; i++) {
+        //   //logger.log(res[i]);
+        // }
 
 
-        //logger.log(res.length);
+        logger.log(res);
 
         if (this.verbose) {
           logger.logToStderr(chalk.green('DONE'));
@@ -178,6 +193,7 @@ class TenantAuditlogReportCommand extends Command {
       },
       responseType: 'json'
     };
+    //console.log(auditURL);
 
     return request.get<AuditlogReport[]>(requestOptions);
   }
