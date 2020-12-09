@@ -174,12 +174,15 @@ class TenantAuditlogReportCommand extends Command {
         return this.getAuditLogReportforSingleContentURL(AuditContentList.contentUri);
       })
       
+      //Async Approach
       let batchedAuditReport : any  = [];
       batchedAuditReport = await Promise.all(requests);
       CompleteAuditReportsUnflattened.push(batchedAuditReport);
-      // Promise.all(requests)
+
+      ////NOT Async Approach
+      // return Promise.all(requests)
       // .then((batchedAuditReport): void => {
-      //   logger.log(`${batchedAuditReport[0]}`)
+      //   logger.log(`${batchedAuditReport[0][0]}`)
       //   CompleteAuditReportsUnflattened.push(batchedAuditReport);
       // });
     }
