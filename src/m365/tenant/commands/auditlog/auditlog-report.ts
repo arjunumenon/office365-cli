@@ -195,7 +195,28 @@ class TenantAuditlogReportCommand extends Command {
       responseType: 'json'
     };
 
+<<<<<<< HEAD
     return request.get<AuditlogReport[]>(requestOptions);
+=======
+      const requests = AuditContentLists.slice(i, i + batchSize<AuditContentLists.length?i+batchSize:AuditContentLists.length).map((AuditContentList) => {
+        //logger.log(`Inner Loop : ${i}`);
+        return this.getAuditLogReportforSingleContentURL(AuditContentList.contentUri);
+      })
+      
+      let batchedAuditReport : any  = [];
+      batchedAuditReport = await Promise.all(requests);
+      CompleteAuditReportsUnflattened.push(batchedAuditReport);
+      // Promise.all(requests)
+      // .then((batchedAuditReport): void => {
+      //   logger.log(`${batchedAuditReport[0]}`)
+      //   CompleteAuditReportsUnflattened.push(batchedAuditReport);
+      // });
+    }
+    
+    //logger.log(`Just before final push. Let us see how this behaves`);
+    const CompleteAuditlogReports = CompleteAuditReportsUnflattened.flat(2);
+    return Promise.resolve(CompleteAuditlogReports);
+>>>>>>> parent of 5afd9f3e5... AUM - Working Async with comments
   }
 
   //End of Arjun's MEthod
