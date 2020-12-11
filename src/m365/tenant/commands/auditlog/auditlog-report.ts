@@ -31,14 +31,14 @@ interface AuditContentList {
   contentExpiration: string;
 }
 
-interface AuditlogReport {
-  CreationTime: string;
-  Id: string;
-  Workload: string;
-  Operation: string;
-  ClientIP: string;
-  User: string;
-}
+// interface AuditlogReport {
+//   CreationTime: string;
+//   Id: string;
+//   Workload: string;
+//   Operation: string;
+//   ClientIP: string;
+//   User: string;
+// }
 
 enum AuditContentTypes {
   AzureActiveDirectory = "Audit.AzureActiveDirectory",
@@ -172,7 +172,7 @@ class TenantAuditlogReportCommand extends Command {
       BatchedAuditContentList.push(AuditContent);
     }
 
-    logger.log(`Total Batches : ${BatchedAuditContentList.length}`)
+    logger.log(`Total Batches : ${BatchedAuditContentList[0].length}`)
     logger.log(`Batched Result is : ${BatchedAuditContentList[0][0]}`)
 
     return this.getAuditLogReportsforCompleteBatch(logger, BatchedAuditContentList)
@@ -223,28 +223,42 @@ class TenantAuditlogReportCommand extends Command {
     // return Promise.resolve(CompleteAuditlogReports);
   }
 
-  private getAuditLogReportforSingleContentURL(logger: Logger, auditURL: string): Promise<AuditlogReport[]> {
-    return new Promise<AuditlogReport[]>((resolve: (AuditLogs: AuditlogReport[]) => void, reject: (error: any) => void): void => {
-      const requestOptions: any = {
-        url: auditURL,
-        headers: {
-          accept: 'application/json;'
-        },
-        responseType: 'json'
-      };
+  private getAuditLogReportforSingleContentURL(logger: Logger, auditURL: string): Promise<any> {
+    const requestOptions: any = {
+      url: auditURL,
+      headers: {
+        accept: 'application/json;'
+      },
+      responseType: 'json'
+    };
 
-      logger.log(`Inside the Generate Audit Section`);
+    logger.log(`Inside the Generate Audit Section : ${auditURL}`);
 
-      request
-        .get<AuditlogReport[]>(requestOptions)
-        .then((AuditLogs: AuditlogReport[]): void => {
-          logger.log(`Audit Log Resolved`)
-          resolve(AuditLogs);
-        }, (err: any): void => {
-          logger.log(`Audit Log Rejected`)
-          reject(err);
-        });
-    });
+    return request.get<any>(requestOptions);
+    
+    // return new Promise<AuditlogReport[]>((resolve: (AuditLogs: AuditlogReport[]) => void, reject: (error: any) => void): void => {
+    //   const requestOptions: any = {
+    //     url: auditURL,
+    //     headers: {
+    //       accept: 'application/json;'
+    //     },
+    //     responseType: 'json'
+    //   };
+
+    //   logger.log(`Inside the Generate Audit Section : ${auditURL}`);
+
+    //   return request.get<AuditlogReport[]>(requestOptions);
+
+    //   request
+    //     .get<AuditlogReport[]>(requestOptions)
+    //     .then((AuditLogs: AuditlogReport[]): void => {
+    //       logger.log(`Audit Log Resolved`)
+    //       resolve(AuditLogs);
+    //     }, (err: any): void => {
+    //       logger.log(`Audit Log Rejected`)
+    //       reject(err);
+    //     });
+    // });
   }
 
   //Arjun's New Method
@@ -284,17 +298,17 @@ class TenantAuditlogReportCommand extends Command {
       if (index < CompleteAuditContentList.length) {
         return this.getAuditContentsforSingleBatch(logger, CompleteAuditContentList[index++])
         .then((data: any): void => {
+          logger.log(`Generated the batch data + ${data[0]}`)
           results.push(data);
           GenerateBatchedAuditReports();
         });
       } else {
+        logger.log(`Else Section....`)
         return Promise.resolve(results);
       }
     };
 
-    GenerateBatchedAuditReports();
-
-    return Promise.resolve();
+    return GenerateBatchedAuditReports();
   }
 
   private getAuditContentsforSingleBatch(logger : Logger, SingleBatchAuditContentList: AuditContentList[]) : Promise<any> {
