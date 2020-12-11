@@ -80,9 +80,9 @@ class TenantAuditlogReportCommand extends Command {
       .then((AuditContentLists: AuditContentList[]): Promise<any> => this.getBatchedAuditLogReports(logger,AuditContentLists))
       .then((res: any): void => {
 
-        logger.log(res);
+        // logger.log(res);
 
-        logger.log(`Total Audit Log Count : ${res.length}`)
+        // logger.log(`Total Audit Log Count : ${res.length}`)
 
         if (this.verbose) {
           logger.logToStderr(chalk.green('DONE'));
@@ -151,58 +151,79 @@ class TenantAuditlogReportCommand extends Command {
     return request.get<AuditContentList[]>(requestOptions)
   }
 
-  private async getBatchedAuditLogReports(logger: Logger, AuditContentLists: AuditContentList[]) : Promise<any> {
+  private getBatchedAuditLogReports(logger: Logger, AuditContentLists: AuditContentList[]) : Promise<any> {
     if (this.verbose) {
       logger.logToStderr(`Start generating Audit Reports in batchwise manner`);
     }
-    
-    //Batching Approach - Given Batch size is 10
+
+    //Arjun - New Approach
+
     const batchSize: number = 10;
-    let runningBatch: number = 0;
-    var CompleteAuditReportsUnflattened : any = [];
     //Temporary - Will be removed in production
     let tempMaximumCount: number = 20;
 
-    for (let i = 0; i < (AuditContentLists.length<tempMaximumCount?AuditContentLists.length:tempMaximumCount); i += batchSize) {
-      if (this.verbose) {
-        runningBatch++;
-        logger.logToStderr(`Generating Audit Reports for Batch : ${runningBatch}`);
-      }
+    let BatchedAuditContentList: any = [];
 
-      const requests = AuditContentLists.slice(i, i + batchSize<AuditContentLists.length?i+batchSize:AuditContentLists.length).map((AuditContentList) => {
-        //logger.log(`Inner Loop : ${i}`);
-        return this.getAuditLogReportforSingleContentURL(AuditContentList.contentUri);
+    for (let i = 0; i < (AuditContentLists.length < tempMaximumCount ? AuditContentLists.length : tempMaximumCount); i += batchSize) {
+      const AuditContent : AuditContentList[] = AuditContentLists.slice(i, i + batchSize < AuditContentLists.length ? i + batchSize : AuditContentLists.length).map((AuditContentList) => {
+        //logger.log(`Inner Loop : ${i}`);        
+        return AuditContentList;
       })
-      
-      //Async Approach
-      let batchedAuditReport : any  = [];
-      batchedAuditReport = await Promise.all(requests);
-      CompleteAuditReportsUnflattened.push(batchedAuditReport);
-
-      ////NOT Async Approach
-      // return Promise.all(requests)
-      // .then((batchedAuditReport): void => {
-      //   logger.log(`${batchedAuditReport[0][0]}`)
-      //   CompleteAuditReportsUnflattened.push(batchedAuditReport);
-      // });
+      BatchedAuditContentList.push(AuditContent);
     }
+
+    logger.log(`Total Batches : ${BatchedAuditContentList.length}`)
+    logger.log(`Batched Result is : ${BatchedAuditContentList[0][0]}`)
+
+    return this.getAuditLogReportsforCompleteBatch(logger, BatchedAuditContentList)
+      .then((CompleteAuditReportsUnflattened: any): Promise<any> => {
+
+        logger.log(`Result is : ${CompleteAuditReportsUnflattened}`)
+        const CompleteAuditlogReports = CompleteAuditReportsUnflattened.flat(2);
+        return Promise.resolve(CompleteAuditlogReports);
+      });
+
+
+    //End of New Approach
     
-    //logger.log(`Just before final push. Let us see how this behaves`);
-    const CompleteAuditlogReports = CompleteAuditReportsUnflattened.flat(2);
-    return Promise.resolve(CompleteAuditlogReports);
+    // //Batching Approach - Given Batch size is 10
+    // const batchSize: number = 10;
+    // let runningBatch: number = 0;
+    // var CompleteAuditReportsUnflattened : any = [];
+    // //Temporary - Will be removed in production
+    // let tempMaximumCount: number = 20;
+
+    // for (let i = 0; i < (AuditContentLists.length<tempMaximumCount?AuditContentLists.length:tempMaximumCount); i += batchSize) {
+    //   if (this.verbose) {
+    //     runningBatch++;
+    //     logger.logToStderr(`Generating Audit Reports for Batch : ${runningBatch}`);
+    //   }
+
+    //   const requests = AuditContentLists.slice(i, i + batchSize<AuditContentLists.length?i+batchSize:AuditContentLists.length).map((AuditContentList) => {
+    //     //logger.log(`Inner Loop : ${i}`);        
+    //     return this.getAuditLogReportforSingleContentURL(logger, AuditContentList.contentUri);
+    //   })
+      
+    //   // //Async Approach
+    //   // let batchedAuditReport : any  = [];
+    //   // batchedAuditReport = await Promise.all(requests);
+    //   // CompleteAuditReportsUnflattened.push(batchedAuditReport);
+
+    //   //NOT Async Approach
+    //   Promise.all(requests)
+    //   .then((batchedAuditReport : any): void => {
+    //     logger.log(`Inside THEN Method. Let us if this works`);
+    //     logger.log(`${batchedAuditReport[0][0]}`);
+    //     CompleteAuditReportsUnflattened.push(batchedAuditReport);
+    //   });
+    // }
+    
+    // //logger.log(`Just before final push. Let us see how this behaves`);
+    // const CompleteAuditlogReports = CompleteAuditReportsUnflattened.flat(2);
+    // return Promise.resolve(CompleteAuditlogReports);
   }
 
-  private getAuditLogReportforSingleContentURL(auditURL: string): Promise<AuditlogReport[]> {
-    // const requestOptions: any = {
-    //   url: auditURL,
-    //   headers: {
-    //     accept: 'application/json;'
-    //   },
-    //   responseType: 'json'
-    // };
-
-    // return request.get<any>(requestOptions);
-
+  private getAuditLogReportforSingleContentURL(logger: Logger, auditURL: string): Promise<AuditlogReport[]> {
     return new Promise<AuditlogReport[]>((resolve: (AuditLogs: AuditlogReport[]) => void, reject: (error: any) => void): void => {
       const requestOptions: any = {
         url: auditURL,
@@ -212,15 +233,77 @@ class TenantAuditlogReportCommand extends Command {
         responseType: 'json'
       };
 
+      logger.log(`Inside the Generate Audit Section`);
+
       request
         .get<AuditlogReport[]>(requestOptions)
         .then((AuditLogs: AuditlogReport[]): void => {
+          logger.log(`Audit Log Resolved`)
           resolve(AuditLogs);
         }, (err: any): void => {
+          logger.log(`Audit Log Rejected`)
           reject(err);
         });
     });
   }
+
+  //Arjun's New Method
+
+  // private getBatchedAuditContent(logger: Logger,AuditContentLists : AuditContentList[],  batchSize: number = 10): AuditContentList[][] {
+  //   let runningBatch: number = 0;
+  //   //Temporary - Will be removed in production
+  //   let tempMaximumCount: number = 20;
+
+  //   const CompleteRequest: any = [];
+
+  //   for (let i = 0; i < (AuditContentLists.length < tempMaximumCount ? AuditContentLists.length : tempMaximumCount); i += batchSize) {
+  //     if (this.verbose) {
+  //       runningBatch++;
+  //       logger.logToStderr(`Generating Audit Reports for Batch : ${runningBatch}`);
+  //     }
+
+  //     const AuditContent : AuditContentList[] = AuditContentLists.slice(i, i + batchSize < AuditContentLists.length ? i + batchSize : AuditContentLists.length).map((AuditContentList) => {
+  //       //logger.log(`Inner Loop : ${i}`);        
+  //       return AuditContentList;
+  //     })
+
+  //     CompleteRequest.push(AuditContent);
+  //   }
+
+  //   return CompleteRequest;
+  // }
+
+  private getAuditLogReportsforCompleteBatch(logger: Logger, CompleteAuditContentList: AuditContentList[][]): Promise<any> {
+    var results : any = [];
+    var index = 0;
+
+    const GenerateBatchedAuditReports = (): Promise<any> => {
+      if(this.verbose){
+        logger.log(`Get Audit Report for Batch : ${index}`)
+      }
+      if (index < CompleteAuditContentList.length) {
+        return this.getAuditContentsforSingleBatch(logger, CompleteAuditContentList[index++])
+        .then((data: any): void => {
+          results.push(data);
+          GenerateBatchedAuditReports();
+        });
+      } else {
+        return Promise.resolve(results);
+      }
+    };
+
+    GenerateBatchedAuditReports();
+
+    return Promise.resolve();
+  }
+
+  private getAuditContentsforSingleBatch(logger : Logger, SingleBatchAuditContentList: AuditContentList[]) : Promise<any> {
+    return Promise.all(SingleBatchAuditContentList.map(AuditContentInfo => {
+      return this.getAuditLogReportforSingleContentURL(logger,AuditContentInfo.contentUri)
+    }));
+  }
+
+  //End of Arjun's MEthod
 
   public options(): CommandOption[] {
     const options: CommandOption[] = [
